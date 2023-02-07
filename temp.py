@@ -40,8 +40,16 @@ def load_frame(path):
 
 def load_video(path='stable_video_2.avi'): 
     """
-    Loads a video file from the specified file path and returns a numpy array of
-    shape [t, w, h, 3], [t, w, h], and the number of frames in the video.
+    Load video from a file and return the processed video frames, full color frames, and number of frames
+
+    less
+    Copy code
+    Args:
+    path (str): path to the video file. Default is 'stable_video_2.avi'
+
+    Returns:
+    tuple: processed video frames, full color frames, number of frames
+
     """
     cap = cv2.VideoCapture(path)
     
@@ -683,7 +691,7 @@ def choose_random_frames(vid_len=120, num_of_frames=10):
 
 def analyze_shell(video, fs=24):
     """
-    Analyzes the video by cropping it into multiple boxes, computing the FFT, color, and texture features of each box,
+    Analyzes the video by cropping it into multiple patches, computing the FFT, color, and texture features of each patch,
     and returning the results.
     
     Parameters:
@@ -704,11 +712,11 @@ def analyze_shell(video, fs=24):
         for j in range(num_y):
             x = stride + stride * i
             y = stride + stride * j
-            box = crop_box(x, y, video)
+            P = crop_box(x, y, video)
             t = time.time()
-            fft.append(FFT_module(box, fs))
-            color.append(color_module(box))
-            texture.append(texture_module(box))
+            fft.append(FFT_module(P, fs))
+            color.append(color_module(P))
+            texture.append(texture_module(P))
             print('time = ', str(time.time() - t))
 
     return np.array([fft, color, texture])
@@ -737,7 +745,7 @@ def time_corp_analyze_shell(video, stride, dur, left, top, right, bottom, label=
         croped, start = time_crop(video, dur=dur, start=start)
         start = start - stride
         result.append(analyze_shell(crop_vid(croped, left, top, right, bottom), fs))
-        break
+    
     return result
 
 
