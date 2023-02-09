@@ -30,14 +30,8 @@ from skimage.draw import polygon
 
 
 def F_frangi(img_adapteq):
-    #cv2.imshow('image', img_adapteq)
     image_f = 10000*frangi(np.array(img_adapteq), sigmas=range(1, 3, 1), scale_range=None, scale_step=None, alpha=0.25, beta=0.85, gamma=15, black_ridges=True, mode='reflect', cval=0)
-    #image_m = meijering(np.array(img_adapteq))
-    #image_s = sato(np.array(img_adapteq),black_ridges=True, mode='reflect')
-    #cv2.imshow('image', image_f)
-    #cv2.waitKey(0)
-    #plt.imshow(image_f, cmap="gray")
-    #plt.show()
+
     return image_f
 def threshold(image):
     thresh = threshold_otsu(image)
@@ -45,9 +39,23 @@ def threshold(image):
     binary = np.array(image > thresh, dtype=bool)
     plt.imshow(binary, cmap="gray")
     plt.show()
-    selem = disk(2.5)
+    selem = disk(2.7)
     opened_image = morphology.opening(binary, selem)
     plt.imshow(opened_image, cmap="gray")
+
+
+    fig, ax = plt.subplots(ncols=3, figsize=(10, 5))
+    ax[0].imshow(image,cmap='gray')
+    ax[0].set_title('Frangi input image')
+    ax[0].axis('off')
+
+    ax[1].imshow(binary,cmap='gray')
+    ax[1].set_title('Thresholding')
+    ax[1].axis('off')
+
+    ax[2].imshow(opened_image,cmap='gray')
+    ax[2].set_title('Morphologic opening')
+    ax[2].axis('off')
     plt.show()
     return opened_image
 
@@ -104,38 +112,12 @@ def load_video(path):
     cap = cv2.VideoCapture('/Users/ofirbenyosef/hello/cut2.mov')
     while (cap.isOpened()):
         ret, frame = cap.read()
-        #b_frame = np.uint8(1000*threshold(F_frangi(exposure.equalize_adapthist(frame[:, :, 1], clip_limit=0.03))))
         b_frame = try_2(exposure.equalize_adapthist(frame, clip_limit=0.03))
         cv2.imshow('frame', b_frame)
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
     cap.release()
 
-def color_hist():
-    file0 = 'frames/MicrosoftTeams-image (2).png'
-    img_1 = cv2.imread(file0)
-    color = ('b','g','r')
-    plt.figure()
-    for i,col in enumerate(color):
-        histr_1 = cv2.calcHist([img_1],[i],None,[256],[0,256])
-        plt.plot(histr_1,color = col)
-        plt.xlim([0,256])
-    plt.show()
-    file1 = 'frames/MicrosoftTeams-image (10).png'
-    img_2 = cv2.imread(file1)
-    color = ('b','g','r')
-    plt.figure()
-    for i,col in enumerate(color):
-        histr_2 = cv2.calcHist([img_2],[i],None,[256],[0,256])
-        plt.plot(histr_2,color = col)
-        plt.xlim([0,256])
-    plt.show()
-    for i,col in enumerate(color):
-        histr_1 = cv2.calcHist([img_1],[i],None,[256],[0,256])
-        histr_2 = cv2.calcHist([img_2],[i],None,[256],[0,256])
-        plt.plot(np.divide(histr_2,histr_1),color = col)
-        plt.xlim([0,256])
-    plt.show()
 def find_vessels(image):
     label_img = label(image)
     regions = regionprops(label_img)
@@ -148,8 +130,7 @@ def find_vessels(image):
     print('...')
     hist, bin_edges = np.histogram(orientations, density=True)
     _ = plt.hist(orientations)  # arguments are passed to np.histogram
-    #plt.title("Histogram of orientation")
-    #plt.show()
+
 
 def r_prop(image_b,image):
     img = image
@@ -202,43 +183,34 @@ def keep_largest_connected_components(mask):
         out_img[blobs == largest_blob_label] = struc_id
 
     return out_img
-def try_2(image):   
-   #image = human_mitosis()
-   #image = cv2.imread('/Users/ofirbenyosef/hello/frames/MicrosoftTeams-image (8).png')
-   #img = rgb2gray(image)
-   #img = rgb2gray(img_vid)
-   #fig, ax = plt.subplots()
-   #ax.imshow(img, cmap='gray')
-   #ax.set_title('Microscopy image of human cells stained for nuclear DNA')
-   #plt.show()
-   #fig, ax = plt.subplots(figsize=(5, 5))
-   #qcs = ax.contour(img, origin='image')
-   #ax.set_title('Contour plot of the same raw image')
-   #plt.show()
-   #print(qcs.levels)
 
+def try_2(image):   
     thresholds = filters.threshold_multiotsu(image, classes=2)
     regions = np.digitize(image, bins=thresholds)
     plt.imshow(regions, cmap='gray'),plt.show()
 
-    selem = disk(1.5)
+    selem = disk(2.5)
     tmp = morphology.closing(regions,selem)
-    I = keep_largest_connected_components(tmp)
-    
-    mask = morphology.remove_small_objects(I, 50)
-    mask = morphology.remove_small_holes(mask, 500)
+    plt.imshow(tmp, cmap='gray'),plt.show()
 
-    selem = disk(15)
+    I = keep_largest_connected_components(tmp)
+    plt.imshow(I, cmap='gray'),plt.show()
+
+    mask = morphology.remove_small_objects(I, 900)
+    mask = morphology.remove_small_holes(mask, 800)
+    plt.imshow(mask, cmap='gray'),plt.show() 
+
+    selem = disk(17)
     tmp = morphology.closing(mask,selem)
     I = keep_largest_connected_components(tmp)
 
     
     fig, ax = plt.subplots(ncols=2, figsize=(10, 5))
     ax[0].imshow(regions)
-    ax[0].set_title('Original')
+    ax[0].set_title('Multi-Otsu thresholding')
     ax[0].axis('off')
     ax[1].imshow(I)
-    ax[1].set_title('Multi-Otsu thresholding')
+    ax[1].set_title('Morphologic closing')
     ax[1].axis('off')
     plt.show()
     
@@ -329,27 +301,35 @@ def contrast_enhancement(img):
     # The declaration of CLAHE
     # clipLimit -> Threshold for contrast limiting
     clahe = cv2.createCLAHE(clipLimit = 5)
-    final_img = clahe.apply(image_bw) + 30
+    final_img = clahe.apply(image_bw) 
     return final_img
 
 
 
 if __name__ == '__main__':
     start = time.time()
-    path = r'frames/MicrosoftTeams-image (6).png'
+    path = r'frames/MicrosoftTeams-image (10).jpeg'
     frame = load_frame(path)
-    #plt.imshow(20*np.log10(abs(np.fft.fft2(frame)))),plt.colorbar(),plt.show()
+    plt.imshow(cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2GRAY)),plt.show()
     in_im = contrast_enhancement(cv2.imread(path))
-    plt.imshow(in_im,cmap='gray'),plt.show()
-    #frame_s = frame + binary_frame
-    #plt.imshow(frame_s,cmap = 'gray'),plt.show()
-    # find_vessels(binary_frame)
-    #r_prop(frame,binary_frame)
-    #video_stab()
-    #segment_images(path)
-    I = try_2(in_im)
-    binary_frame = threshold(F_frangi(frame*I))
     
+    fig = plt.figure(figsize=(10, 8)) 
+    ax = fig.add_subplot(1, 2,1)   
+    ax.imshow(cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2GRAY),cmap='gray') 
+    ax.set_title('Orginal')
+    ax = fig.add_subplot(1, 2,2)   
+    ax.imshow(in_im,cmap='gray') 
+    ax.set_title('Contrast enhancement')
+    plt.show()
+
+
+    I = try_2(in_im)
+    plt.imshow(in_im*I, cmap="gray")
+    plt.title('Remove backround')
+    plt.show()
+    #binary_frame = threshold(F_frangi(frame*I))
+    binary_frame = threshold(F_frangi(in_im*I))
+  
     ##load_video(path)
     #
     K = colon_seg(binary_frame)
@@ -372,4 +352,18 @@ if __name__ == '__main__':
     ##grab_cut()
     ##find_frame()
     ##color_hist()
+
+    fig, ax = plt.subplots(ncols=3, figsize=(10, 5))
+    ax[0].imshow(frame,cmap='gray')
+    ax[0].set_title('The first frame of the video')
+    ax[0].axis('off')
+
+    ax[1].imshow(frame*K,cmap='gray')
+    ax[1].set_title('Remove the conating tissue')
+    ax[1].axis('off')
+
+    ax[2].imshow(frame*K_image*I,cmap='gray')
+    ax[2].set_title('Remove the backround')
+    ax[2].axis('off')
+    plt.show()
 #

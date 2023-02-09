@@ -358,7 +358,7 @@ def showing(imgs):
     plt.figure()
     for i in imgs:
         plt.imshow(i,cmap=plt.cm.gray)
-        plt.pause(0.1)
+        plt.pause(0.05)
         plt.close()
     
     
@@ -722,6 +722,51 @@ def analyze_shell(video, fs=24):
     return np.array([fft, color, texture])
 
 
+def analyze_shell2(video, fs=24):
+    """
+    Analyzes the video by cropping it into multiple patches, computing the FFT, color, and texture features of each patch,
+    and returning the results.
+    
+    Parameters:
+        - video: numpy.ndarray, the input video
+        - fs: int, the frame rate of the video (default: 24)
+        
+    Returns:
+        - numpy.ndarray, an array of FFT, color, and texture features
+    """
+    stride = 10
+    num_x = int(np.floor(video.shape[1] / stride)) - 1
+    num_y = int(np.floor(video.shape[2] / stride)) - 1
+    #fft = []
+    #color = []
+    #texture = []
+      
+    img = video[0]
+    plt.figure()
+    for i in range(num_x):
+        for j in range(num_y):
+            
+            x = stride + stride * i
+            y = stride + stride * j
+            P = crop_box(x, y, video)
+
+            t = time.time()
+            fft= FFT_module(P, fs)
+            color = color_module(P)
+            texture = texture_module(P) 
+            print('time = ', str(time.time() - t))
+            # put the freture vectors into the classifier and get estimation for each
+
+            # classifier consider all features 
+            label = ... #todo
+            # color the corspondent patch according to the label
+            img = color_square_shell(img,x=i,y=j,step_size=2*stride,label=label)
+            #show the mask
+            plt.imshow(img)
+            plt.pause(0.05)
+            plt.close()
+   # return np.array([fft, color, texture])
+
 def time_corp_analyze_shell(video, stride, dur, left, top, right, bottom, label='bad', fs=24):
     """
     Analyzes the video by cropping it into multiple segments and running `analyze_shell` on each segment.
@@ -822,7 +867,7 @@ def color_square_shell(img,x=0,y=0,step_size=20,label=1):
     # bad is red
     bad = (150,0,0)
     alpha = 0.4
-    color = good if label==1 else bad
+    color = good if label==0 else bad
     return color_grid_square(img, i, j, color, step_size=step_size,alpha=alpha)
 
 
