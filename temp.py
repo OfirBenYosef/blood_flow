@@ -1,5 +1,5 @@
 
-
+import os
 from skimage.filters import gaussian, laplace, sobel, roberts,gabor,gabor_kernel
 from skimage import feature
 from skimage.restoration import denoise_tv_chambolle
@@ -383,7 +383,7 @@ def crop_vid(vid,left,top ,right,bottom ):
     #play_vid(crop_vid)
     return crop_vid
 
-def time_crop(video,dur=5,start=0):
+def time_crop(video,dur=5,start=0,fs=24):
     """
     Crops a given video based on a specified duration and start time.
     
@@ -396,7 +396,7 @@ def time_crop(video,dur=5,start=0):
     ndarray: The cropped video.
     int: The end time of the cropped video in seconds.
     """
-    fs = 24
+
     num_of_frames = fs*dur
     end = start+num_of_frames
     try:
@@ -703,7 +703,7 @@ def analyze_shell(video, fs=24):
     return np.array([fft, color, texture])
 
 
-def analyze_shell2(video, fs=24):
+def analyze_shell2(video,label, fs=24):
     """
     Analyzes the video by cropping it into multiple patches, computing the FFT, color, and texture features of each patch,
     and returning the results.
@@ -715,23 +715,28 @@ def analyze_shell2(video, fs=24):
     Returns:
         - numpy.ndarray, an array of FFT, color, and texture features
     """
-    stride = 10
-    num_x = int(np.floor(video.shape[1] / stride)) - 1
-    num_y = int(np.floor(video.shape[2] / stride)) - 1
+    stride = 20
+    num_x = int(np.floor(video.shape[1] / stride))
+    num_y = int(np.floor(video.shape[2] / stride))
     #fft = []
     #color = []
     #texture = []
-    classifier = classify.Classify('SVM_model.sav','TrainedNN.pth','best_model_GaborNet3.pth')
+    #
+    classifier = classify.Classify('SVM_model.sav','TrainedNN.pth','TrainedGaborModel.pth')
 
       
     img = video[0]
     plt.figure()
     for i in range(num_x):
         for j in range(num_y):
-            
-            x = stride + stride * i
-            y = stride + stride * j
+
+            x = int(stride/2 + stride * i)
+            y = int(stride/2 + stride * j)
             P = crop_box(x, y, video)
+
+            ## new
+            if P[0].mean().mean() < 50:
+                continue
 
             t = time.time()
             fft = FFT_module(P, fs)
@@ -739,21 +744,29 @@ def analyze_shell2(video, fs=24):
             #texture = texture_module(P)
             print('time = ', str(time.time() - t))
             # put the feature vectors into the classifier and get estimation for each
-            output = classifier([fft,color])
-            # classifier consider all features 
-            label = int(np.logical_or(output[0],output[1]))
-            #label = int(output[1])
+            output = classifier([fft,color[0],P[0]])
+            # classifier consider all features
+            label = int(np.logical_or(output[2],output[1]))
+            label = int(output[0])
+            #label = output.mean().round()
             # color the corspondent patch according to the label
-            img = color_square_shell(img,x=x,y=y,step_size=2*stride,label=label)
+            img = color_square_shell(img,x=x,y=y,step_size=20,label=label)
+            pass
             #show the mask
-            # plt.imshow(img)
-            # plt.pause(0.05)
+            plt.imshow(img)
+            #plt.pause(0.05)
+            if x>150:
+                pass
             if i == num_x-1 and j == num_y -1:
                 plt.imshow(img)
                 plt.show()
                 break
             # plt.close()
 
+
+    plt.imshow(img)
+    plt.show()
+    print("/?")
    # return np.array([fft, color, texture])
 
 def time_corp_analyze_shell(video, stride, dur, left, top, right, bottom, label='bad', fs=24):
@@ -776,11 +789,11 @@ def time_corp_analyze_shell(video, stride, dur, left, top, right, bottom, label=
     rep = int(np.floor(end / (dur * fs)))
     result = []
     for i in range(rep):
-        croped, start = time_crop(video, dur=dur, start=start)
+        croped, start = time_crop(video, dur=dur, start=start, fs=fs)
         start = start - stride
-        result.append(analyze_shell2(crop_vid(croped, left, top, right, bottom), fs))
+        result.append(analyze_shell2(crop_vid(croped, left, top, right, bottom), fs=fs,label=label))
     
-    return result
+    return np.array(result[0])
 
 
 
@@ -856,7 +869,7 @@ def color_square_shell(img,x=0,y=0,step_size=20,label=1):
     # good is green
     good = (0,150,0)
     # bad is red
-    bad = (150,0,0)
+    bad = (150,52,219)
     alpha = 0.4
     color = good if label==0 else bad
     return color_grid_square(img, i, j, color, step_size=step_size,alpha=alpha)
@@ -864,8 +877,36 @@ def color_square_shell(img,x=0,y=0,step_size=20,label=1):
 
 if __name__ == '__main__':
     path = r'/Users/ofirbenyosef/hello/frames/MicrosoftTeams-image (9).png'
+    save_path = '/home/stavb/BFE_final/np_files'
     #frame = load_frame(path)
     vid, full_color, fs = load_video('stable_vid_15sec1.avi')
+    fs = 25
+    # samples = np.array([],dtype=object)
+    # vid, full_color, fs = load_video('sample.vid.avi')
+    # paths = ['/home/stavb/BFE_final/good','/home/stavb/BFE_final/bad']
+    # save_path = '/home/stavb/BFE_final/np_files'
+    # for path in paths:
+    #     for file in os.listdir(path):
+    #         file_path = os.path.join(path,file)
+    #         label_string = path.split('/')[-1]
+    #         if label_string == 'good':
+    #             label = 0
+    #         else:
+    #             label = 1
+    #         vid, full_color, fs = load_video(file_path)
+    #         features = time_corp_analyze_shell(full_color, stride=0, dur=4, left=0, top=0, right=720, bottom=576,
+    #                                fs=fs,label = label )
+    #
+    #
+    #         name = file.split("_")[0]+'.npy'
+    #         np.save(os.path.join(save_path, name), features)
+    # name = '.npy'
+    # print('horrs')
+
+    prefix = 'new_data'
+    #classify.make_data_func2(save_path, save_path, prefix)
+    #classify.train_classifiers(save_path,save_path,prefix = prefix,num_of_tries=1,show = True)
+
     #stft_2d(vid)
     #crop_good(vid)
     #crop_bad(vid)
@@ -889,11 +930,14 @@ if __name__ == '__main__':
     #time_corp_shell(vid,stride=0,dur=5,left=270,top=150,right=520,bottom=200,label = 'bad')
     #time_corp_shell(vid,stride=0,dur=5,left = 40,top = 110,right = 110,bottom = 390,label = 'good')
     #Bad = time_corp_analyze_shell(full_color,stride=0,dur=4,left=270,top=150,right=520,bottom=200,label = 'bad',fs = fs)
-    Good = time_corp_analyze_shell(full_color,stride=0,dur=4,left = 40,top = 110,right = 110,bottom = 390,label = 'good',fs = fs)
+    #Good = time_corp_analyze_shell(full_color,stride=0,dur=4,left = 40,top = 110,right = 110,bottom = 390,label = 'good',fs = fs)
 
-    all = time_corp_analyze_shell(full_color,stride=0,dur=4,left = 0,top = 0,right = 720,bottom = 576,label = 'good',fs = fs)
+    #all = time_corp_analyze_shell(full_color,stride=0,dur=4,left = 0,top = 0,right = 720,bottom = 576,label = 'good',fs = fs)
+    all2 = time_corp_analyze_shell(full_color, stride=0, dur=4, left=0, top=0, right=720, bottom=576, label='good',
+                                  fs=fs)
+
     print('HHH')
-    img = cv2.cvtColor(cv2.imread("frames/MicrosoftTeams-image (9).png"),cv2.COLOR_BGR2RGB)
+    #img = cv2.cvtColor(cv2.imread("frames/MicrosoftTeams-image (9).png"),cv2.COLOR_BGR2RGB)
     img1 = draw_grid(img)
     img2 = color_grid_square(img1, 3, 26, (0,150,0),alpha =0.4)
     img2 = color_grid_square(img2, 7, 26, (0,150,0),alpha =0.4)

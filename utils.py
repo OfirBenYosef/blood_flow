@@ -17,7 +17,8 @@ class BFEDataset(Dataset):
         """
         Args:
             dataset (list): list of all images
-            dir (string) : dir path where the dataset is located
+            dir (string) : dir path to where the dataset is located
+            if dir = False, than dataset contains the images as np matrices
 
             transform (callable, optional): Optional transform to be applied
                 on a sample.
@@ -44,11 +45,15 @@ class BFEDataset(Dataset):
         images = []
         labels = []
         for i in self.indices[idx*self.batch_size : (idx+1)*self.batch_size]:
-            chosen_image = self.dataset[i]
-            image = np.load(os.path.join(self.dir,chosen_image))
-            label = chosen_image.split('_')[0]
-            if label == 'Good': label = 0
-            else: label = 1
+            if self.dir:
+                chosen_image = self.dataset[i]
+                image = np.load(os.path.join(self.dir,chosen_image))
+                label = chosen_image.split('_')[0]
+                if label == 'Good': label = 0
+                else: label = 1
+            else:
+                image = self.dataset[i][0]
+                label = self.dataset[i][1]
 
 
             if self.transform:

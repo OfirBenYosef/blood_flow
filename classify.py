@@ -50,7 +50,9 @@ class SaveBestModel:
             self, current_valid_loss,
             epoch, model, optimizer, criterion
     ):
+        flag = False
         if current_valid_loss < self.best_valid_loss:
+            flag =True
             self.best_valid_loss = current_valid_loss
             print(f"\nBest validation loss: {self.best_valid_loss}")
             print(f"\nSaving best model for epoch: {epoch + 1}\n")
@@ -64,9 +66,10 @@ class SaveBestModel:
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': criterion,
             }, save_path)
+        return flag
 
 
-def TrainGabornet(dataset, dir, split=[0.8, 0.12, 0.08]):
+def TrainGabornet(dataset, dir, split=[0.85, 0, 0.15]):
     """
     Train Gabornet with labeled 20x20 patches.
     COMMENTS: we saved the patches in npy files, each contains X patches. this need to be changed for future
@@ -77,23 +80,39 @@ def TrainGabornet(dataset, dir, split=[0.8, 0.12, 0.08]):
     :return: train accuracy
     """
 
-    train_set, test_set, val_set = torch.utils.data.random_split(dataset, split)
+    if dir:
+        train_set, test_set, val_set = torch.utils.data.random_split(dataset, split)
 
     # load the data using custom dataloader
-    train_data = utils.BFEDataset(train_set, dir, batch_size=64 * 16)
-    test_data = utils.BFEDataset(test_set, dir, batch_size=False)
-    val_data = utils.BFEDataset(val_set, dir, batch_size=False)
+        train_data = utils.BFEDataset(train_set, dir, batch_size=64 * 16)
+        test_data = utils.BFEDataset(test_set, dir, batch_size=False)
+        val_data = utils.BFEDataset(val_set, dir, batch_size=False)
+    else:
+        # the data is 2XN, where N is # of sample. first item is an images and second is corresponding labels
+        len_ = dataset[0].shape[0]
+        indices = list(range(len_))
+        random.shuffle(indices)
+        test_size = int(np.floor(len_ * split[1]))
+        train_set = int(np.floor(len_ * split[0]))
+        data = [np.array([dataset[0][i],dataset[1][i]],dtype = object) for i  in indices]
+        train_data = utils.BFEDataset(data[0:train_set],dir = False,batch_size=False)
+        test_data = utils.BFEDataset(data[train_set:train_set+test_size],dir = False,batch_size=False)
+        val_data = utils.BFEDataset(data[train_set+test_size:],dir = False,batch_size= False)
+
+
+
 
     # set the model
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = GaborNN().to(device)
     optimizer = torch.optim.AdamW(model.parameters())
-    epochs = 70
+    #optimizer = torch.optim.SGD(model.parameters(), lr=0.1, momentum=0.9)
+    epochs = 1000
     save_best_model = SaveBestModel(FreeText='GaborNet5', path='/home/stavb/PycharmProjects/outputs')
 
     ## loss criterion
     criterion = nn.BCELoss()
-    # criterion = nn.CrossEntropyLoss()   BCE is slightly better
+    #criterion = nn.CrossEntropyLoss()   #BCE is slightly better
 
     val_acc = []
     val_loss = []
@@ -106,6 +125,7 @@ def TrainGabornet(dataset, dir, split=[0.8, 0.12, 0.08]):
         running_loss = 0.0
         epoch_time = time.time()
 
+        #for idx, (inputs, labels) in enumerate(train_data):
         for idx, (inputs, labels) in enumerate(train_data):
             # get the inputs
 
@@ -143,9 +163,11 @@ def TrainGabornet(dataset, dir, split=[0.8, 0.12, 0.08]):
             epoch_time = time.time() - epoch_time
             print("Epoch: {} | Val loss: {} | Val accuracy: {}% | Time: {}s ".format(epoch, loss_val, acc_val,
                                                                                      epoch_time))
-            save_best_model(
+            if save_best_model(
                 loss_val, epoch, model, optimizer, criterion
-            )
+            ):
+                torch.save(model, 'TrainedGaborModel2.pth')
+
             val_acc.append(acc_val)
             val_loss.append(loss_val)
 
@@ -382,7 +404,7 @@ def trainNN(X_train, y_train, X_test, y_test, sizes=False, show=False, lr=0.001,
             save_model = False):
     ''''''
     learning_rate = lr
-    epochs = 12000
+    epochs = 30000
     model = NN_Net(input_shape=X_train.shape[1])
     if sizes: model.set_params_size(sizes)
     optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
@@ -593,6 +615,47 @@ def make_data_func(np_folder_path, save_path, prefix):
     np.save(os.path.join(save_path, 'X_gabor' + prefix + '.npy', X_gabor))
     np.save(os.path.join(save_path, 'y' + prefix + '.npy', y))
 
+def make_data_func2(np_folder_path, save_path, prefix):
+    '''
+    creates and save data as numpy arrays
+    each type of data (fft,histograms,gabor filters, and labels)
+    :param np_folder_path:
+    :param save_path:
+    :param prefix: (str)
+    :return:
+    '''
+    np_format = 'npy'
+    X_fft = []
+    X_hist = []
+    X_gabor = []
+    y = []
+    count = 0
+    for root, dirs, files in os.walk(np_folder_path):
+        for filename in files:
+            if filename.lower().endswith(np_format):
+                print(filename)
+                data = np.load(os.path.join(root, filename), allow_pickle=True)
+                for i in range(data.shape[0]):
+                    X_fft.append(data[i][0])
+                    # hist = data[1][i]
+                    # hist = hist.reshape(3, -1).T
+                    # hist = hist[1:, :]
+                    # hist = hist.reshape(-1, 1)
+                    # X_hist.append(np.concatenate(hist, axis=0))
+                    # X_hist = np.concatenate(hist, axis=0)
+                    X_hist.append(data[i][1])
+                    X_gabor.append(data[i][2])
+                    y.append(data[i][3])
+
+
+    X_fft = np.array(X_fft)
+    X_hist = np.array(X_hist)
+    X_gabor = np.array(X_gabor)
+    y = np.array(y)
+    np.save(os.path.join(save_path, 'X_fft' + prefix + '.npy'), X_fft)
+    np.save(os.path.join(save_path, 'X_hist' + prefix + '.npy'), X_hist)
+    np.save(os.path.join(save_path, 'X_gabor' + prefix + '.npy'), X_gabor)
+    np.save(os.path.join(save_path, 'y' + prefix + '.npy'), y)
 
 def train_classifiers(np_folder_path, save_path, prefix=False, make_data=False, test_ratio=0.8, num_of_tries=50,
                       n_components=False, show = False):
@@ -618,18 +681,18 @@ def train_classifiers(np_folder_path, save_path, prefix=False, make_data=False, 
 
     X_fft = np.load(os.path.join(save_path, 'X_fft' + prefix + '.npy'), allow_pickle=True)
     X_hist = np.load(os.path.join(save_path, 'X_hist' + prefix + '.npy'), allow_pickle=True)
-    X_hist_hsv = np.load(os.path.join(save_path, 'X_hist_hsv' + prefix + '.npy'), allow_pickle=True)
+    #X_hist_hsv = np.load(os.path.join(save_path, 'X_hist_hsv' + prefix + '.npy'), allow_pickle=True)
     X_gabor = np.load(os.path.join(save_path, 'X_gabor' + prefix + '.npy'), allow_pickle=True)
     y = np.load(os.path.join(save_path, 'y' + prefix + '.npy'), allow_pickle=True)
-
+    TrainGabornet(dataset = [X_gabor,y],dir = False)
     if n_components:
         pca = PCA(n_components=n_components)
         pca.fit(X_gabor.T)
         X_gabor = pca.components_.T
 
     X_fft_hist = np.concatenate([X_fft, X_hist], axis=1)
-    X_list = [X_fft_hist, X_fft, X_hist, X_gabor, X_hist_hsv]
-    X_list = [X_fft]  ##### delete
+    X_list = [X_fft_hist, X_fft, X_hist]
+    X_list = [X_hist]
     scores = np.zeros((len(X_list), num_of_tries, 3))
     outputs = np.zeros((len(X_list), num_of_tries, 3), dtype=object)
     GT = np.zeros(num_of_tries, dtype=object)
@@ -662,7 +725,6 @@ def train_classifiers(np_folder_path, save_path, prefix=False, make_data=False, 
     plt.ylabel('Accuracy %')
 
     ## delete later!
-    Avgs = np.load('AVGS.npy', allow_pickle=True)
     X = []
     y = []
     GT = np.stack(GT)
@@ -701,26 +763,29 @@ class Classify():
         self.path_svm = path_svm
         self.path_nn = path_nn
         self.path_gabor = path_gabor
-        file = open(path_svm, 'rb')
+        file = open(self.path_svm, 'rb')
         self.svmTrained =  pickle.load(file)
-        self.NNTrained = NN_Net(input_shape=96)
-        self.NNTrained.load_state_dict(torch.load(path_nn))
+        self.NNTrained = NN_Net(input_shape=100)
+        self.NNTrained.load_state_dict(torch.load(self.path_nn))
         self.NNTrained.eval()
-        self.GaborNetTrained =  GaborNN()
+        #self.GaborNetTrained = GaborNN()
         #self.GaborNetTrained.load_state_dict(torch.load(self.path_gabor))
+        self.GaborNetTrained  = torch.load(self.path_gabor)
+        self.GaborNetTrained.eval()
         pass
 
     def __call__(self, data):
         with torch.no_grad():
-            hist = data[1][0]
-            hist = hist.reshape(3, -1).T
-            hist = hist[1:, :]
-            hist = np.array(hist.reshape(1, -1))
-            A = (self.NNTrained(torch.from_numpy(data[0][0:96].T).float()))[0].numpy().round()
+            hist = data[1].reshape(1, -1)
+
+            A = (self.NNTrained(torch.from_numpy(data[0].T).float()))[0].numpy().round()
             B = self.svmTrained.predict(hist)
+            image = torch.from_numpy(np.array(data[2]).transpose([2,0,1])).type(torch.FloatTensor)
+
+            C = (self.GaborNetTrained(image.cuda()).cpu()).round().numpy()[0]
             #B = self.svmTrained.predict(data[1][0].reshape(1, -1))
 
-        return [A,B]
+        return np.array([A,B,C])
 
 
 if __name__ == '__main__':
