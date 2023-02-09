@@ -11,6 +11,7 @@ from scipy import signal
 from scipy.fft import fftshift
 from numpy.fft import fft ,ifft
 import time
+import classify
 
 def load_frame(path):
     """
@@ -42,8 +43,6 @@ def load_video(path='stable_video_2.avi'):
     """
     Load video from a file and return the processed video frames, full color frames, and number of frames
 
-    less
-    Copy code
     Args:
     path (str): path to the video file. Default is 'stable_video_2.avi'
 
@@ -64,13 +63,13 @@ def load_video(path='stable_video_2.avi'):
         ret, frame = cap.read()
         if ret:
             video.append(frame[:, :, 1])
-            video_full_color.append(frame)
-            key = cv2.waitKey(10)
-            if key == ord('q'):
-                break
+            video_full_color.append(cv2.cvtColor(frame,cv2.COLOR_BGR2RGB))
+            # key = cv2.waitKey(10)
+            # if key == ord('q'):
+            #     break
         else:
             break
-    cv2.destroyAllWindows()
+    # cv2.destroyAllWindows()
     cap.release()
     video = np.array(video)
     video_full_color = np.array(video_full_color)
@@ -285,12 +284,12 @@ def color_hist(frame):
     return np array [256,3]
     
     """
-    temp = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
+
     color_1 = ('h','s','v')
     color = ('r','g','b')
     histr = []
     for i,col in enumerate(color):
-        histr.append(cv2.calcHist([temp],[i],None,[256],[0,256])) 
+        histr.append(cv2.calcHist([frame],[i],None,[256],[0,256]))
 
     return histr
 
@@ -599,24 +598,6 @@ def FFT_module(vid,fs):
     
     return filtered_magnitude
 
-def color_module(vid):
-    """
-    A function to extract color features from a video.
-
-    Parameters:
-    vid (ndarray): The video data.
-    
-    Returns:
-    ndarray: A 2D array of color features, one row per video frame.
-    """
-    hists = []
-    for ii in range(vid.shape[0]):
-        frame = vid[ii,:,:,:]
-        C = color_hist(frame)
-        C1 = np.reshape(C,-1) 
-        hists.append(C1)
-    hists = np.array(hists)
-    return hists
 
 def color_module(vid):
     """
@@ -650,7 +631,7 @@ def texture_module(vid):
     pi = np.pi
     freqs = (0.05, 0.15, 0.25, 0.3)
     ang = (0, np.pi/4, np.pi/2, np.pi, 7*np.pi/4)
-    idxs = choose_random_frames(vid.shape[0], 5)
+    idxs = choose_random_frames(vid.shape[0] - 1, 5)
     
     # loop over the selected frames
     for t in idxs:
@@ -740,6 +721,8 @@ def analyze_shell2(video, fs=24):
     #fft = []
     #color = []
     #texture = []
+    classifier = classify.Classify('SVM_model.sav','TrainedNN.pth','best_model_GaborNet3.pth')
+
       
     img = video[0]
     plt.figure()
@@ -751,20 +734,26 @@ def analyze_shell2(video, fs=24):
             P = crop_box(x, y, video)
 
             t = time.time()
-            fft= FFT_module(P, fs)
+            fft = FFT_module(P, fs)
             color = color_module(P)
-            texture = texture_module(P) 
+            #texture = texture_module(P)
             print('time = ', str(time.time() - t))
-            # put the freture vectors into the classifier and get estimation for each
-
+            # put the feature vectors into the classifier and get estimation for each
+            output = classifier([fft,color])
             # classifier consider all features 
-            label = ... #todo
+            label = int(np.logical_or(output[0],output[1]))
+            #label = int(output[1])
             # color the corspondent patch according to the label
-            img = color_square_shell(img,x=i,y=j,step_size=2*stride,label=label)
+            img = color_square_shell(img,x=x,y=y,step_size=2*stride,label=label)
             #show the mask
-            plt.imshow(img)
-            plt.pause(0.05)
-            plt.close()
+            # plt.imshow(img)
+            # plt.pause(0.05)
+            if i == num_x-1 and j == num_y -1:
+                plt.imshow(img)
+                plt.show()
+                break
+            # plt.close()
+
    # return np.array([fft, color, texture])
 
 def time_corp_analyze_shell(video, stride, dur, left, top, right, bottom, label='bad', fs=24):
@@ -789,7 +778,7 @@ def time_corp_analyze_shell(video, stride, dur, left, top, right, bottom, label=
     for i in range(rep):
         croped, start = time_crop(video, dur=dur, start=start)
         start = start - stride
-        result.append(analyze_shell(crop_vid(croped, left, top, right, bottom), fs))
+        result.append(analyze_shell2(crop_vid(croped, left, top, right, bottom), fs))
     
     return result
 
@@ -834,6 +823,8 @@ def color_grid_square(img, i, j, color, step_size=20,alpha =0.4):
     """
     # Create a copy of the input image
     overlay = img.copy()
+    i = int(i)
+    j = int(j)
     # Draw a filled rectangle on the overlay
     cv2.rectangle(overlay,
                   (j * step_size, i * step_size),  # top-left corner
@@ -874,7 +865,7 @@ def color_square_shell(img,x=0,y=0,step_size=20,label=1):
 if __name__ == '__main__':
     path = r'/Users/ofirbenyosef/hello/frames/MicrosoftTeams-image (9).png'
     #frame = load_frame(path)
-    vid, full_color, fs = load_video('stable_video_1.avi')
+    vid, full_color, fs = load_video('stable_vid_15sec1.avi')
     #stft_2d(vid)
     #crop_good(vid)
     #crop_bad(vid)
@@ -897,8 +888,10 @@ if __name__ == '__main__':
     #showing(good_t)
     #time_corp_shell(vid,stride=0,dur=5,left=270,top=150,right=520,bottom=200,label = 'bad')
     #time_corp_shell(vid,stride=0,dur=5,left = 40,top = 110,right = 110,bottom = 390,label = 'good')
-    #Bad = time_corp_analyze_shell(full_color,stride=0,dur=5,left=270,top=150,right=520,bottom=200,label = 'bad',fs = fs)
-    #Good = time_corp_analyze_shell(full_color,stride=0,dur=5,left = 40,top = 110,right = 110,bottom = 390,label = 'good',fs = fs)
+    #Bad = time_corp_analyze_shell(full_color,stride=0,dur=4,left=270,top=150,right=520,bottom=200,label = 'bad',fs = fs)
+    Good = time_corp_analyze_shell(full_color,stride=0,dur=4,left = 40,top = 110,right = 110,bottom = 390,label = 'good',fs = fs)
+
+    all = time_corp_analyze_shell(full_color,stride=0,dur=4,left = 0,top = 0,right = 720,bottom = 576,label = 'good',fs = fs)
     print('HHH')
     img = cv2.cvtColor(cv2.imread("frames/MicrosoftTeams-image (9).png"),cv2.COLOR_BGR2RGB)
     img1 = draw_grid(img)

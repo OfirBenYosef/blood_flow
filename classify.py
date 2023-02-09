@@ -711,8 +711,15 @@ class Classify():
         pass
 
     def __call__(self, data):
-        A = self.NNTrained(data[0])
-        B = self.svmTrained(data[1])
+        with torch.no_grad():
+            hist = data[1][0]
+            hist = hist.reshape(3, -1).T
+            hist = hist[1:, :]
+            hist = np.array(hist.reshape(1, -1))
+            A = (self.NNTrained(torch.from_numpy(data[0][0:96].T).float()))[0].numpy().round()
+            B = self.svmTrained.predict(hist)
+            #B = self.svmTrained.predict(data[1][0].reshape(1, -1))
+
         return [A,B]
 
 

@@ -16,7 +16,7 @@ import plotly.graph_objects as go
 from skimage import (
     color, feature, filters, measure, morphology, segmentation, util
 )
-import generate_mask as gm
+#import generate_mask as gm
 
 
 class BFE_image:
