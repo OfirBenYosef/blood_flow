@@ -202,7 +202,7 @@ def mean_box(video):
     np.ndarray: A numpy array of shape (t, 1) where each element is the mean pixel intensity for each frame.
     """
     mean_box = np.mean(video, axis=(1, 2))
-    return mean_box.reshape(-1, 1)
+    return mean_box
 
 def shell(video, label, idx=0):
     """
