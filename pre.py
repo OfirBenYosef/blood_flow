@@ -27,37 +27,57 @@ from skimage import (
 )
 from skimage.draw import polygon
 
+import temp 
 
 
 def F_frangi(img_adapteq):
-    image_f = 10000*frangi(np.array(img_adapteq), sigmas=range(1, 3, 1), scale_range=None, scale_step=None, alpha=0.25, beta=0.85, gamma=15, black_ridges=True, mode='reflect', cval=0)
+    """
+    Applies Frangi filter to an image after adaptive histogram equalization.
+    :param img_adapteq: input image after adaptive histogram equalization
+    :return: filtered image
 
+    """
+    image_f = 10000*frangi(np.array(img_adapteq), sigmas=range(1, 3, 1), scale_range=None, scale_step=None, alpha=0.25, beta=0.85, gamma=15, black_ridges=True, mode='reflect', cval=0)
     return image_f
+
 def threshold(image):
+    """
+    Applies thresholding to the input image.
+
+    Args:
+        image (numpy.ndarray): The input image.
+
+    Returns:
+        numpy.ndarray: The binary mask of the thresholded image.
+
+    """
+    # Calculate Otsu threshold
     thresh = threshold_otsu(image)
-    print(thresh)
+    
+    # Convert image to binary based on threshold
     binary = np.array(image > thresh, dtype=bool)
-    plt.imshow(binary, cmap="gray")
-    plt.show()
+    
+    # Perform morphological opening to remove small objects
     selem = disk(2.7)
     opened_image = morphology.opening(binary, selem)
-    plt.imshow(opened_image, cmap="gray")
 
+    # Display the input image, thresholded image, and opened image
+    # fig, ax = plt.subplots(ncols=3, figsize=(10, 5))
+    # ax[0].imshow(image,cmap='gray')
+    # ax[0].set_title('Frangi input image')
+    # ax[0].axis('off')
 
-    fig, ax = plt.subplots(ncols=3, figsize=(10, 5))
-    ax[0].imshow(image,cmap='gray')
-    ax[0].set_title('Frangi input image')
-    ax[0].axis('off')
+    # ax[1].imshow(binary,cmap='gray')
+    # ax[1].set_title('Thresholding')
+    # ax[1].axis('off')
 
-    ax[1].imshow(binary,cmap='gray')
-    ax[1].set_title('Thresholding')
-    ax[1].axis('off')
-
-    ax[2].imshow(opened_image,cmap='gray')
-    ax[2].set_title('Morphologic opening')
-    ax[2].axis('off')
-    plt.show()
+    # ax[2].imshow(opened_image,cmap='gray')
+    # ax[2].set_title('Morphologic opening')
+    # ax[2].axis('off')
+    # plt.show()
+    
     return opened_image
+
 
 def load_frame(path):
      # load the frame from path and return the equalize green channel
@@ -68,55 +88,49 @@ def load_frame(path):
 def video_stab():
 
     # Using defaults
-    stabilizer = VidStab()
-    stabilizer.stabilize(input_path='data_vid_15sec.mov', output_path='stable_vid_15sec.avi')
+    #stabilizer = VidStab()
+    #stabilizer.stabilize(input_path='good.mov', output_path='stable_vid_15sec.avi')
 
     # Using a specific keypoint detector
-    stabilizer = VidStab(kp_method='ORB')
-    stabilizer.stabilize(input_path='data_vid_15sec.mov', output_path='stable_vid_15sec1.avi')
+    #stabilizer = VidStab(kp_method='ORB')
+    #stabilizer.stabilize(input_path='good.mov', output_path='stable_vid_15sec1.avi')
 
     # Using a specific keypoint detector and customizing keypoint parameters
     stabilizer = VidStab(kp_method='FAST', threshold=42, nonmaxSuppression=False)
-    stabilizer.stabilize(input_path='data_vid_15sec.mov', output_path='stable_vid_15sec2.avi')
+    stabilizer.stabilize(input_path='13_sec_us.mov', output_path='13_sec_s.avi')
 
 def colon_seg(img):
-    #img = data.astronaut()
-    #image = cv2.imread('/Users/ofirbenyosef/hello/frames/MicrosoftTeams-image (4).png')[1,:,:]
-    #img = try_2(image)
-    
+    """
+    This function takes an input image and performs segmentation of the colon using the active contour model. 
+    It returns a binary mask with the colon region marked as 1 and the background marked as 0.
 
+    Parameters:
+    img (numpy.ndarray): Input image
+
+    Returns:
+    numpy.ndarray: Binary mask with the colon region marked as 1 and the background marked as 0
+
+    """
+
+    # Initialize an array of points to form the initial contour
     s = np.linspace(0, 2*np.pi, 400)
     r = 240 + 310*np.sin(s)
     c = 370 + 370*np.cos(s)
     init = np.array([r, c]).T
-    #f_img = roberts(sobel(img))
-    #f_img = gaussian(sobel(100*img), 0.03, preserve_range=False)
+    
+    # Apply Gaussian filter to the input image
     f_img = gaussian(img, 0.003, preserve_range=False)
-    print('s',time.time())
+    
+    # Apply active contour model to segment the colon
     snake = active_contour(f_img, init, alpha=0.2, beta=30, gamma=0.01)
-    print('e',time.time())
-    #fig, ax = plt.subplots(figsize=(7, 7))
-    #ax.imshow(img, cmap=plt.cm.gray)
-    #ax.plot(init[:, 1], init[:, 0], '--r', lw=3)
-    #ax.plot(snake[:, 1], snake[:, 0], '-b', lw=3)
-    #ax.set_xticks([]), ax.set_yticks([])
-    #ax.axis([0, img.shape[1], img.shape[0], 0])
-    #plt.show()
+    
+    # Create a binary mask from the segmented contour
     T = create_mask(img, np.array(snake))
-    print('p',time.time())
 
     return T
 
-def load_video(path):
-    # load the video from path
-    cap = cv2.VideoCapture('/Users/ofirbenyosef/hello/cut2.mov')
-    while (cap.isOpened()):
-        ret, frame = cap.read()
-        b_frame = try_2(exposure.equalize_adapthist(frame, clip_limit=0.03))
-        cv2.imshow('frame', b_frame)
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
-    cap.release()
+
+
 
 def find_vessels(image):
     label_img = label(image)
@@ -132,38 +146,17 @@ def find_vessels(image):
     _ = plt.hist(orientations)  # arguments are passed to np.histogram
 
 
-def r_prop(image_b,image):
-    img = image
-# Binary image, post-process the binary mask and compute labels
-
-    labels = measure.label(img)
-
-    fig = px.imshow(image_b)
-    fig.update_traces(hoverinfo='skip') # hover is only for label info
-
-    props = measure.regionprops(labels, img)
-    properties = ['area', 'eccentricity', 'perimeter', 'intensity_mean']
-
-    # For each label, add a filled scatter trace for its contour,
-    # and display the properties of the label in the hover of this trace.
-    for index in range(1, labels.max()):
-        label_i = props[index].label
-        contour = measure.find_contours(labels == label_i, 0.5)[0]
-        y, x = contour.T
-        hoverinfo = ''
-        for prop_name in properties:
-            hoverinfo += f'<b>{prop_name}: {getattr(props[index], prop_name):.2f}</b><br>'
-        fig.add_trace(go.Scatter(
-            x=x, y=y, name=label_i,
-            mode='lines', fill='toself', showlegend=False,
-            hovertemplate=hoverinfo, hoveron='points+fills'))
-
-    plotly.io.show(fig)
 def keep_largest_connected_components(mask):
-    '''
-    Keeps only the largest connected components of each label for a segmentation mask.
-    '''
+    """
+    Removes all connected components in a binary image except the largest one.
 
+    Parameters:
+    image (ndarray): A binary input image where 0 represents the background and 1 represents the foreground.
+
+    Returns:
+    ndarray: A binary image where all connected components except the largest one have been removed.
+
+    """
     out_img = np.zeros(mask.shape, dtype=np.uint8)
 
     for struc_id in [1, 2, 3]:
@@ -184,37 +177,79 @@ def keep_largest_connected_components(mask):
 
     return out_img
 
-def try_2(image):   
+def remove_background(image):
+    """
+    Segments the breast tissue in a given grayscale image using Multi-Otsu thresholding and morphological operations.
+
+    Parameters:
+    image (ndarray): A grayscale input image.
+
+    Returns:
+    ndarray: A binary image where the breast tissue is set to 1 and the remaining tissue is set to 0.
+
+    """
+    # Apply Multi-Otsu thresholding to segment the breast tissue
     thresholds = filters.threshold_multiotsu(image, classes=2)
     regions = np.digitize(image, bins=thresholds)
-    plt.imshow(regions, cmap='gray'),plt.show()
 
+    # Apply morphological operations to remove noise and small holes
+    selem = disk(4)
+    tmp = morphology.erosion(regions, selem)
     selem = disk(2.5)
-    tmp = morphology.closing(regions,selem)
-    plt.imshow(tmp, cmap='gray'),plt.show()
+    tmp = morphology.closing(tmp, selem)
 
-    I = keep_largest_connected_components(tmp)
-    plt.imshow(I, cmap='gray'),plt.show()
-
-    mask = morphology.remove_small_objects(I, 900)
-    mask = morphology.remove_small_holes(mask, 800)
-    plt.imshow(mask, cmap='gray'),plt.show() 
-
-    selem = disk(17)
-    tmp = morphology.closing(mask,selem)
+    # Keep only the largest connected component
     I = keep_largest_connected_components(tmp)
 
-    
-    fig, ax = plt.subplots(ncols=2, figsize=(10, 5))
-    ax[0].imshow(regions)
-    ax[0].set_title('Multi-Otsu thresholding')
-    ax[0].axis('off')
-    ax[1].imshow(I)
-    ax[1].set_title('Morphologic closing')
-    ax[1].axis('off')
-    plt.show()
-    
+    # Remove small objects and holes
+    mask = morphology.remove_small_objects(I, 1000)
+    mask = morphology.remove_small_holes(mask, 1200)
+
+    # Apply morphological closing operation to fill remaining holes
+    selem = disk(21)
+    tmp = morphology.closing(mask, selem)
+    I = keep_largest_connected_components(tmp)
+
     return I
+
+
+
+
+
+
+#def try_2(image):   
+#    thresholds = filters.threshold_multiotsu(image, classes=2)
+#    regions = np.digitize(image, bins=thresholds)
+#   # plt.imshow(regions, cmap='gray'),plt.show()
+#
+#    selem = disk(4)
+#    tmp = morphology.erosion(regions,selem)
+#    selem = disk(2.5)
+#    tmp = morphology.closing(regions,selem)
+#    # plt.imshow(tmp, cmap='gray'),plt.show()
+#
+#    I = keep_largest_connected_components(tmp)
+#    # plt.imshow(I, cmap='gray'),plt.show()
+#
+#    mask = morphology.remove_small_objects(I, 1000)
+#    mask = morphology.remove_small_holes(mask, 1200)
+#   # plt.imshow(mask, cmap='gray'),plt.show() 
+#
+#    selem = disk(21)
+#    tmp = morphology.closing(mask,selem)
+#    I = keep_largest_connected_components(tmp)
+#
+#    
+#    # fig, ax = plt.subplots(ncols=2, figsize=(10, 5))
+#    # ax[0].imshow(regions)
+#    # ax[0].set_title('Multi-Otsu thresholding')
+#    # ax[0].axis('off')
+#    # ax[1].imshow(I)
+#    # ax[1].set_title('Morphologic closing')
+#    # ax[1].axis('off')
+#    # plt.show()
+#    
+#    return I
 #
 
 #
@@ -231,7 +266,7 @@ def grab_cut():
     img = img*mask2[:,:,np.newaxis]
     plt.imshow(img),plt.colorbar(),plt.show()
     # newmask is the mask image I manually labelled
-    newmask = try_2(img_o)
+    newmask = remove_background(img_o)
     plt.imshow(newmask),plt.colorbar(),plt.show()
     # wherever it is marked white (sure foreground), change mask=1
     # wherever it is marked black (sure background), change mask=0
@@ -243,13 +278,7 @@ def grab_cut():
     plt.imshow(img.astype('uint8')),plt.colorbar(),plt.show()
 #
 #
-def ploting():
-    path = r'/Users/ofirbenyosef/Desktop/OneDrive - Technion/מסמכים/מסמכים/סמסטר 8/פרוייקט ב/temp/frame00038.png'
-    # Using cv2.imread() method
-    img = cv2.imread(path)
-    # Displaying the image
-    cv2.imshow('image', img)
-    cv2.waitKey(0)
+
 
 def segment_images(path):
     for filename in os.listdir(path):
@@ -285,85 +314,211 @@ def find_frame():
             break
   
 def create_mask(image, points):
-    # Create an empty mask
+    """
+    Creates a binary mask for a region of interest (ROI) specified by a list of points.
+    
+    Args:
+    image: a 2-dimensional numpy array representing the input image.
+    points: a list of points that define the ROI.
+    
+    Returns:
+    mask: a binary mask with the same shape as the input image, where the pixels inside the ROI are set to 1, and the
+          pixels outside the ROI are set to 0.
+    """
+    
+    # Create an empty mask with the same shape as the input image
     mask = np.zeros_like(image)
-    # Convert the points to integer coordinates
+    
+    # Convert the list of points to integer coordinates
     points = np.array(points, dtype=int)
-    # Fill the mask with the contour
+    
+    # Fill the mask with the contour defined by the points using the polygon function from the skimage library
     rr, cc = polygon(points[:, 0], points[:, 1])
     mask[rr, cc] = 1
-    #plt.imshow(mask),plt.show()
+    
+    # Return the binary mask
     return mask
 
+
 def contrast_enhancement(img):
-    # take the green channel
+    """
+    Enhances the contrast of the input image by applying Contrast Limited Adaptive Histogram Equalization (CLAHE).
+    
+    Args:
+    img: a 3-dimensional numpy array representing the input image in BGR format.
+    
+    Returns:
+    final_img: a 2-dimensional numpy array representing the enhanced grayscale image.
+    """
+    
+    # Convert the image to RGB color space and take the green channel
     image_bw = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)[:,:,1]
-    # The declaration of CLAHE
-    # clipLimit -> Threshold for contrast limiting
+    
+    # Create a CLAHE object with a threshold for contrast limiting
     clahe = cv2.createCLAHE(clipLimit = 5)
-    final_img = clahe.apply(image_bw) 
+    
+    # Apply CLAHE to the grayscale image
+    final_img = clahe.apply(image_bw)
+    
+    # Return the enhanced grayscale image
     return final_img
+
+
+def apply_mask(video, mask):
+    """
+    Applies a binary mask to each frame of an input video, keeping only the pixels within the mask.
+
+    Parameters:
+    - video: a 4D numpy array representing the input video, with dimensions (num_frames, height, width, num_channels)
+    - mask: a 2D numpy array representing the binary mask to apply to each frame of the input video, with dimensions (height, width)
+
+    Returns:
+    - masked_vid: a 4D numpy array representing the masked video, with the same dimensions as the input video
+    """
+    masked_vid = []
+    for i in range(0, video.shape[0]):
+        # Apply the mask to each channel of the current frame
+        r = mask * video[i, :, :, 0]
+        g = mask * video[i, :, :, 1]
+        b = mask * video[i, :, :, 2]
+        # Stack the masked channels to form the final masked frame
+        tmp = np.dstack([r, g, b])
+        # Append the masked frame to the output list
+        masked_vid.append(tmp)
+    # Convert the output list to a numpy array
+    masked_vid = np.array(masked_vid)
+    return masked_vid
+
+
+def remove_fat(image):
+    """
+    Removes the fat tissue from a given BGR image using morphological operations.
+
+    Parameters:
+    image (ndarray): A BGR input image.
+
+    Returns:
+    ndarray: A binary image where the fat tissue is set to 0 and the remaining tissue is set to 1.
+
+    """
+
+    # Convert image to HSV color space
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    
+    # Extract hue channel
+    hue = hsv_image[:, :, 0]
+    
+    # Threshold the hue channel to segment the fat tissue
+    fat_mask = (hue < 55).astype(np.uint8)
+    
+    # Remove small connected components
+    fat_mask = keep_largest_connected_components(fat_mask)
+    
+    # Apply opening operation to remove small noise
+    selem = disk(21)
+    fat_mask = opening(fat_mask, selem)
+    
+    # Remove small connected components again
+    fat_mask = keep_largest_connected_components(fat_mask)
+    
+    # Apply closing operation to fill small holes
+    selem = disk(15)
+    fat_mask = closing(fat_mask, selem)
+    
+    # Invert the mask and return as binary image
+    return np.logical_not(fat_mask).astype(np.uint8)
+
+
 
 
 
 if __name__ == '__main__':
-    start = time.time()
-    path = r'frames/MicrosoftTeams-image (10).jpeg'
-    frame = load_frame(path)
-    plt.imshow(cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2GRAY)),plt.show()
-    in_im = contrast_enhancement(cv2.imread(path))
-    
-    fig = plt.figure(figsize=(10, 8)) 
-    ax = fig.add_subplot(1, 2,1)   
-    ax.imshow(cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2GRAY),cmap='gray') 
-    ax.set_title('Orginal')
-    ax = fig.add_subplot(1, 2,2)   
-    ax.imshow(in_im,cmap='gray') 
-    ax.set_title('Contrast enhancement')
-    plt.show()
-
-
-    I = try_2(in_im)
-    plt.imshow(in_im*I, cmap="gray")
-    plt.title('Remove backround')
-    plt.show()
-    #binary_frame = threshold(F_frangi(frame*I))
-    binary_frame = threshold(F_frangi(in_im*I))
-  
-    ##load_video(path)
-    #
-    K = colon_seg(binary_frame)
-#
-    K = np.abs(1-K)
+ 
+    # start = time.time()
+    # path = r'frames/MicrosoftTeams-image (10).jpeg'
+    # frame = load_frame(path)
+    # plt.imshow(cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2GRAY),cmap='gray'),plt.show()
+    # in_im = contrast_enhancement(cv2.imread(path))
+    # 
+    # fig = plt.figure(figsize=(10, 8)) 
+    # ax = fig.add_subplot(1, 2,1)   
+    # ax.imshow(cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2GRAY),cmap='gray') 
+# 
+    # ax.set_title('Orginal')
+    # ax = fig.add_subplot(1, 2,2)   
+    # ax.imshow(in_im,cmap='gray') 
+    # ax.set_title('Contrast enhancement')
+    # plt.show()
+# 
+# 
+    # I = try_2(in_im)
+    # plt.imshow(in_im*I, cmap="gray")
+    # plt.title('Remove backround')
+    # plt.show()
+    # #binary_frame = threshold(F_frangi(frame*I))
+    # binary_frame = threshold(F_frangi(in_im*I))
+  # 
+    # ##load_video(path)
+    # #
+    # K = colon_seg(binary_frame)
+## 
+    # K = np.abs(1-K)
+    # selem = disk(5)
+## 
+    # fig = plt.figure(figsize=(10, 8)) 
+    # ax = fig.add_subplot(1, 3 ,1)
+    # ax.imshow(frame*K,cmap = 'gray') 
+    # ax = fig.add_subplot(1, 3 ,2)
+    # K_image = morphology.closing(K, selem)
+    # #
+    # ax.imshow(frame*K_image*I,cmap = 'gray') 
+    # ax = fig.add_subplot(1, 3 ,3)
+    # ax.imshow(binary_frame,cmap = 'gray') 
+    # plt.show()
+# 
+# 
+    # fig, ax = plt.subplots(ncols=3, figsize=(10, 5))
+    # ax[0].imshow(frame,cmap='gray')
+    # ax[0].set_title('The first frame of the video')
+    # ax[0].axis('off')
+# 
+    # ax[1].imshow(frame*K,cmap='gray')
+    # ax[1].set_title('Remove the conating tissue')
+    # ax[1].axis('off')
+    # mask = K_image*I
+    # ax[2].imshow(mask,cmap='gray')
+    # ax[2].set_title('Remove the backround')
+    # ax[2].axis('off')
+    # plt.show()
+    # ------------- #
+   # video_stab()
     selem = disk(5)
-#
-    fig = plt.figure(figsize=(10, 8)) 
-    ax = fig.add_subplot(1, 3 ,1)
-    ax.imshow(frame*K,cmap = 'gray') 
-    ax = fig.add_subplot(1, 3 ,2)
+    video ,video_fc, fs = temp.load_video('good_stable.avi')
+    frame = video_fc[120]
+    img_wy = remove_fat(frame)
+    in_im = contrast_enhancement(frame)
+    I = remove_background(in_im)
+
+    binary_frame = threshold(F_frangi(in_im*I))
+   # K = colon_seg(binary_frame)
+    K = binary_frame
+    K = np.abs(1-K)
     K_image = morphology.closing(K, selem)
-    #
-    ax.imshow(frame*K_image*I,cmap = 'gray') 
-    ax = fig.add_subplot(1, 3 ,3)
-    ax.imshow(binary_frame,cmap = 'gray') 
-    plt.show()
-    #end = time.time()
-    #print(str(end-start))
-    ##grab_cut()
-    ##find_frame()
-    ##color_hist()
+    mask = K_image*I
+    mask_all = np.logical_and(mask,img_wy).astype(int)
+    selem = disk(35)
+    mask_all = morphology.closing(mask_all, selem)
+    mask_all = keep_largest_connected_components(mask_all)
+    # ------------- #
 
-    fig, ax = plt.subplots(ncols=3, figsize=(10, 5))
-    ax[0].imshow(frame,cmap='gray')
-    ax[0].set_title('The first frame of the video')
-    ax[0].axis('off')
-
-    ax[1].imshow(frame*K,cmap='gray')
-    ax[1].set_title('Remove the conating tissue')
-    ax[1].axis('off')
-
-    ax[2].imshow(frame*K_image*I,cmap='gray')
-    ax[2].set_title('Remove the backround')
-    ax[2].axis('off')
-    plt.show()
+    m_vid = apply_mask(video_fc,mask_all)
+    temp.showing(m_vid)
+   # temp.save_video(m_vid,fs)
+ 
 #
+
+
+
+
+
+
