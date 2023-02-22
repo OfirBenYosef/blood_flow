@@ -50,6 +50,7 @@ Parameters:
 •	show_plot (bool): whether to display the plot (default: True)
 Returns:
 •	None
+
 crop_vid(video, left, top, right, bottom)
 This function crops a video to the specified rectangle.
 Parameters:
@@ -60,12 +61,14 @@ Parameters:
 •	bottom (int): the y-coordinate of the bottom edge of the rectangle
 Returns:
 •	numpy.ndarray: the cropped video
+
 time_crop(video, dur, start=0, fs=24)
 This function crops a video to a specified duration and starting frame.
 Parameters:
 •	video (numpy.ndarray): the input video
 •	dur (int): the duration of the cropped video, in seconds
 •	start (int): the starting frame of the cropped video ()
+
 time_crop(video, dur, start, fs)
 This function crops a segment of a video based on a given duration and start time.
 Parameters:
@@ -111,6 +114,7 @@ Parameters:
 Returns:
 •	numpy.ndarray: A list of results of analyze_shell2.
  
+
 draw_grid(img, step_size=20, color=(255, 0, 0), thickness=1)
 This function draws a grid on an image.
 Parameters:
