@@ -1,31 +1,34 @@
 # blood_flow
+
+
+
 Image processing functions
 
 This repository contains a set of Python functions for image processing. The functions can be used for various tasks, such as contrast enhancement, background removal, thresholding, and segmentation of colon tissue.
 
 The following functions are available:
-
-contrast_enhancement(img)
+## pre.py
+### contrast_enhancement(img)
 
 This function takes an input image and applies contrast enhancement using Contrast Limited Adaptive Histogram Equalization (CLAHE) on the green channel of the image.
 
-create_mask(image, points)
+### create_mask(image, points)
 
 This function takes an input image and a set of points, and creates a binary mask of the region defined by the points.
 
-colon_seg(img)
+### colon_seg(img)
 
 This function takes an input image and applies active contour segmentation to segment the colon tissue in the image.
 
-threshold(image)
+### threshold(image)
 
 This function takes an input image and applies thresholding using Otsu's method to obtain a binary image. It then performs morphological opening to remove small objects and smooth the edges.
 
-F_frangi(img_adapteq)
+### F_frangi(img_adapteq)
 
 This function applies Frangi vesselness filter to the input image to enhance the visibility of vessels in the image.
 
-apply_mask(video, mask)
+### apply_mask(video, mask)
 
 This function takes an input video and a binary mask, and applies the mask to each frame of the video to obtain a masked video.
 
@@ -37,7 +40,7 @@ To use these functions in your project, simply import the relevant function into
 
 
 
-temp - the analyze step 
+## temp.py - the analyze step 
 
 
 analyze_shell(video, fps, label='bad', save_path=None, show_plot=True)
@@ -51,7 +54,7 @@ Parameters:
 Returns:
 •	None
 
-crop_vid(video, left, top, right, bottom)
+### crop_vid(video, left, top, right, bottom)
 This function crops a video to the specified rectangle.
 Parameters:
 •	video (numpy.ndarray): the input video
@@ -62,14 +65,14 @@ Parameters:
 Returns:
 •	numpy.ndarray: the cropped video
 
-time_crop(video, dur, start=0, fs=24)
+### time_crop(video, dur, start=0, fs=24)
 This function crops a video to a specified duration and starting frame.
 Parameters:
 •	video (numpy.ndarray): the input video
 •	dur (int): the duration of the cropped video, in seconds
 •	start (int): the starting frame of the cropped video ()
 
-time_crop(video, dur, start, fs)
+### time_crop(video, dur, start, fs)
 This function crops a segment of a video based on a given duration and start time.
 Parameters:
 •	video (numpy.ndarray): The input video as a numpy array.
@@ -79,7 +82,7 @@ Parameters:
 Returns:
 •	numpy.ndarray: The cropped video segment.
  
-analyze_shell2(video, label, fs)
+### analyze_shell2(video, label, fs)
 This function analyzes a video segment by calculating its optical flow and extracting features based on it.
 Parameters:
 •	video (numpy.ndarray): The input video segment as a numpy array.
@@ -88,7 +91,7 @@ Parameters:
 Returns:
 •	numpy.ndarray: The extracted features as a numpy array.
  
-crop_vid(video, left, top, right, bottom)
+### crop_vid(video, left, top, right, bottom)
 This function crops a rectangular region from a video.
 Parameters:
 •	video (numpy.ndarray): The input video as a numpy array.
@@ -99,7 +102,7 @@ Parameters:
 Returns:
 •	numpy.ndarray: The cropped video.
  
-time_corp_analyze_shell(video, stride, dur, left, top, right, bottom, label='bad', fs=24)
+### time_corp_analyze_shell(video, stride, dur, left, top, right, bottom, label='bad', fs=24)
 This function analyzes a video by cropping it into multiple segments and running analyze_shell2 on each segment.
 Parameters:
 •	video (numpy.ndarray): The input video as a numpy array.
@@ -115,7 +118,7 @@ Returns:
 •	numpy.ndarray: A list of results of analyze_shell2.
  
 
-draw_grid(img, step_size=20, color=(255, 0, 0), thickness=1)
+### draw_grid(img, step_size=20, color=(255, 0, 0), thickness=1)
 This function draws a grid on an image.
 Parameters:
 •	img (numpy.ndarray): The input image as a numpy array.
