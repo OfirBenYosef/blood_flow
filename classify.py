@@ -1,26 +1,18 @@
-import cv2
 import os
 import numpy as np
-import BFEpreprocessing as bfe
 import pandas as pd
 import sklearn
 from sklearn.svm import LinearSVC
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
-from sklearn.datasets import make_classification
-import json
 import random
 from sklearn.neighbors import KNeighborsClassifier
 import torch
 import torch.nn as nn
 import matplotlib.pyplot as plt
-from os import listdir
-from os.path import isfile, join
-import seaborn as sns
 from sklearn.decomposition import PCA
 import time
 from BFEGaborNet import GaborNN
-from torchvision import transforms
 import utils
 import pickle
 
@@ -413,8 +405,6 @@ def trainNN(X_train, y_train, X_test, y_test, sizes=False, show=False, lr=0.001,
     X_train = sc.fit_transform(X_train)
     X_test = sc.fit_transform(X_test)
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    if save_model:
-        save_best_model = SaveBestModel(FreeText='simpleNN_' + prefix, path='/home/stavb/PycharmProjects/outputs')
 
     X_train = torch.from_numpy(X_train).type(torch.FloatTensor)
     y_train = torch.from_numpy(y_train).type(torch.FloatTensor)
@@ -475,11 +465,10 @@ def trainNN(X_train, y_train, X_test, y_test, sizes=False, show=False, lr=0.001,
 
     pass
 
-    torch.save(model.state_dict(), 'TrainedNN.pth')
+
     if save_model:
-        save_best_model(
-            loss, epoch, model, optimizer, criterion
-        )
+        name = 'TrainedNN'+prefix+'.pth'
+        torch.save(model.state_dict(), name)
     output = predicted.reshape(-1).detach().cpu().numpy().round()
     return test_acc[-1], output
 
@@ -505,11 +494,6 @@ def UseSVC(X_train, y_train, X_test, y_test):
     score = clf.score(X_test, y_test)
     output = clf.predict(X_test)
     return score, output
-
-
-def upload_hist(path):
-    hist = pd.read_excel(path, header=None)
-    return hist.to_numpy()
 
 
 def chi_square_hist(hist1, hist2):
@@ -637,12 +621,12 @@ def make_data_func2(np_folder_path, save_path, prefix):
                 data = np.load(os.path.join(root, filename), allow_pickle=True)
                 for i in range(data.shape[0]):
                     X_fft.append(data[i][0])
-                    # hist = data[1][i]
-                    # hist = hist.reshape(3, -1).T
-                    # hist = hist[1:, :]
-                    # hist = hist.reshape(-1, 1)
-                    # X_hist.append(np.concatenate(hist, axis=0))
-                    # X_hist = np.concatenate(hist, axis=0)
+                    hist = data[1][i]
+                    hist = hist.reshape(3, -1).T
+                    hist = hist[1:, :]
+                    hist = hist.reshape(-1, 1)
+                    X_hist.append(np.concatenate(hist, axis=0))
+                    X_hist = np.concatenate(hist, axis=0)
                     X_hist.append(data[i][1])
                     X_gabor.append(data[i][2])
                     y.append(data[i][3])

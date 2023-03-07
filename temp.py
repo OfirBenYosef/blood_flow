@@ -39,6 +39,7 @@ def load_frame(path):
     frame = exposure.equalize_adapthist(frame, clip_limit=0.03)
     return frame
 
+
 def load_video(path='stable_video_2.avi'): 
     """
     Load video from a file and return the processed video frames, full color frames, and number of frames
@@ -51,7 +52,7 @@ def load_video(path='stable_video_2.avi'):
 
     """
     cap = cv2.VideoCapture(path)
-    
+    #cap.set(cv2.CAP_PROP_BUFFERSIZE, 2)
     num_frames = int(cap.get(5))
     width = int(cap.get(3))
     height = int(cap.get(4))
@@ -60,6 +61,7 @@ def load_video(path='stable_video_2.avi'):
     video = []
     video_full_color = []
     while cap.isOpened():
+        print('hii')
         ret, frame = cap.read()
         if ret:
             video.append(frame[:, :, 1])
@@ -722,7 +724,7 @@ def analyze_shell2(video,label, fs=24):
     #color = []
     #texture = []
     #
-    classifier = classify.Classify('SVM_model.sav','TrainedNN.pth','TrainedGaborModel.pth')
+    classifier = classify.Classify('SVM_model.sav','TrainedNN.pth','TrainedGaborModel2.pth')
 
       
     img = video[0]
@@ -744,9 +746,9 @@ def analyze_shell2(video,label, fs=24):
             #texture = texture_module(P)
             print('time = ', str(time.time() - t))
             # put the feature vectors into the classifier and get estimation for each
-            output = classifier([fft,color[0],P[0]])
+            output = classifier([fft,color[-1],P[-1]])
             # classifier consider all features
-            label = int(np.logical_or(output[2],output[1]))
+            #label = int(np.logical_or(output[2],output[1]))
             label = int(output[0])
             #label = output.mean().round()
             # color the corspondent patch according to the label
@@ -879,7 +881,8 @@ if __name__ == '__main__':
     path = r'/Users/ofirbenyosef/hello/frames/MicrosoftTeams-image (9).png'
     save_path = '/home/stavb/BFE_final/np_files'
     #frame = load_frame(path)
-    vid, full_color, fs = load_video('stable_vid_15sec1.avi')
+    path = r'C:\Users\Administrator\PycharmProjects\blood_flow\human.avi'
+    vid, full_color, fs = load_video(path)
     fs = 25
     # samples = np.array([],dtype=object)
     # vid, full_color, fs = load_video('sample.vid.avi')
@@ -933,7 +936,8 @@ if __name__ == '__main__':
     #Good = time_corp_analyze_shell(full_color,stride=0,dur=4,left = 40,top = 110,right = 110,bottom = 390,label = 'good',fs = fs)
 
     #all = time_corp_analyze_shell(full_color,stride=0,dur=4,left = 0,top = 0,right = 720,bottom = 576,label = 'good',fs = fs)
-    all2 = time_corp_analyze_shell(full_color, stride=0, dur=4, left=0, top=0, right=720, bottom=576, label='good',
+    vid_shape = full_color.shape[1:]
+    all2 = time_corp_analyze_shell(full_color, stride=0, dur=4, left=0, top=0, right=vid_shape[1], bottom=vid_shape[0], label='good',
                                   fs=fs)
 
     print('HHH')

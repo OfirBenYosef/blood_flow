@@ -1,7 +1,7 @@
 from skimage import data
 from skimage import color
 import os
-from vidstab import VidStab
+#from vidstab import VidStab
 from skimage.filters import meijering, sato, frangi, hessian, threshold_otsu, gaussian
 import matplotlib.pyplot as plt
 import numpy as np
